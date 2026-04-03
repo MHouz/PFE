@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مول الحانوت — متعقب الديون</title>
+    <!-- Google Fonts: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0D1B3E',
+                        secondary: '#00C9B1',
+                        tertiary: '#E63946',
+                        neutral: '#1A1A2E',
+                        bgLight: '#F8F9FE'
+                    },
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #F8F9FE;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #0D1B3E 0%, #1A1A2E 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 201, 177, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Dark Mode Styles */
+        .dark {
+            background-color: #0a0a16;
+            color: #e2e8f0;
+        }
+        .dark #app {
+            background-color: #0a0a16;
+        }
+        .dark .bg-white {
+            background-color: #1a1a2e;
+            color: #e2e8f0;
+        }
+        .dark .bg-bgLight {
+            background-color: #0a0a16;
+        }
+        .dark .text-primary {
+            color: #ffffff;
+        }
+        .dark .text-gray-700 {
+            color: #cbd5e1;
+        }
+        .dark .bg-gray-50 {
+            background-color: #16213e;
+        }
+        .dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-50 {
+            border-color: #2d3748;
+        }
+        .dark .custom-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .dark input {
+            background-color: #16213e;
+            color: white;
+            border-color: #2d3748;
+        }
+
+        /* Intro Animation */
+        #intro-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: #0D1B3E;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+        .logo-anim {
+            animation: pulse-scale 2s infinite ease-in-out;
+        }
+        @keyframes pulse-scale {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen">
+    <!-- Intro Screen -->
+    <div id="intro-screen">
+        <div class="logo-anim mb-4">
+            <img src="https://ais-dev-3mxxe6mh6ch2ztkr4mlo4x-656027147174.europe-west2.run.app/logo.png" alt="Logo" class="w-48 h-48 object-contain">
+        </div>
+        <h1 class="text-2xl font-black text-white">مول الحانوت</h1>
+        <div class="mt-8 w-12 h-1 bg-secondary rounded-full overflow-hidden">
+            <div class="h-full bg-white animate-[loading_1.5s_infinite]"></div>
+        </div>
+        <style>
+            @keyframes loading {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+            }
+        </style>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="w-full max-w-[390px] bg-bgLight min-h-screen relative flex flex-col shadow-2xl overflow-hidden">
+        <!-- Content will be rendered here by JS -->
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden modal-overlay" onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar Drawer -->
+    <div id="sidebar" class="fixed top-0 left-0 bottom-0 w-64 bg-white z-50 shadow-xl sidebar-transition -translate-x-full flex flex-col p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-xl font-bold text-primary">القائمة</h2>
+            <button onclick="toggleSidebar()" class="text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <div class="flex-1 space-y-2">
+            <button onclick="navigateTo('dashboard'); toggleSidebar()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-primary font-bold transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span>الرئيسية</span>
+            </button>
+            
+            <button onclick="openSettings()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-primary font-bold transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>الإعدادات</span>
+            </button>
+
+            <button onclick="shareApp()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-primary font-bold transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span>مشاركة التطبيق</span>
+            </button>
+        </div>
+        
+        <div class="mt-auto pt-6 border-t border-gray-100">
+            <p class="text-center text-xs text-gray-400">مول الحانوت v1.1</p>
+        </div>
+    </div>
+
+    <!-- Hidden File Input for Import -->
+    <input type="file" id="import-file" class="hidden" accept=".json" onchange="handleImport(event)">
+
+    <!-- Modals Container -->
+    <div id="modal-container" class="fixed inset-0 z-50 hidden flex items-center justify-center p-6 modal-overlay">
+        <!-- Modal content will be injected here -->
+    </div>
+
+    <script>
+        // --- Data Management ---
+        let state = {
+            view: 'dashboard', // dashboard, entityDetail
+            activeTab: 'clients', // clients, suppliers
+            selectedEntityId: null,
+            searchQuery: '',
+            filterStatus: 'all', // all, debt, paid
+            clients: [],
+            suppliers: [],
+            settings: {
+                redLineLimit: 3000,
+                darkMode: false
+            }
+        };
+
+        const STORAGE_KEY = 'moul_lhanout_data_v2';
+
+        function loadFromStorage() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                state = JSON.parse(data);
+                // Reset view on load
+                state.view = 'dashboard';
+                state.selectedEntityId = null;
+                state.searchQuery = '';
+                state.filterStatus = 'all';
+                
+                if (state.settings.darkMode) {
+                    document.body.classList.add('dark');
+                }
+            } else {
+                seedData();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function seedData() {
+            state.clients = [
+                {
+                    id: 'c1',
+                    name: 'ياسين المنصوري',
+                    phone: '0612345678',
+                    transactions: [
+                        { id: 't1', type: 'debt', label: 'تقدية أسبوعية', amount: 1500, date: new Date(Date.now() - 86400000 * 2).toISOString() },
+                        { id: 't2', type: 'payment', label: 'دفعة أولى', amount: 250, date: new Date(Date.now() - 86400000).toISOString() }
+                    ]
+                },
+                {
+                    id: 'c2',
+                    name: 'فاطمة الزهراء',
+                    phone: '0687654321',
+                    transactions: [
+                        { id: 't3', type: 'debt', label: 'زيت وسكر', amount: 450, date: new Date().toISOString() }
+                    ]
+                }
+            ];
+            state.suppliers = [
+                {
+                    id: 's1',
+                    name: 'شركة الحليب المركز',
+                    phone: '0522112233',
+                    transactions: [
+                        { id: 'st1', type: 'debt', label: 'سلعة الصباح', amount: 5000, date: new Date().toISOString() }
+                    ]
+                }
+            ];
+            saveToStorage();
+        }
+
+        // --- Utils ---
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('ar-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' د.م';
+        }
+
+        function getEntityTotal(entity) {
+            return entity.transactions.reduce((acc, t) => {
+                return t.type === 'debt' ? acc + t.amount : acc - t.amount;
+            }, 0);
+        }
+
+        function getTotalDebts(type) {
+            const list = type === 'suppliers' ? state.suppliers : state.clients;
+            return list.reduce((acc, entity) => acc + getEntityTotal(entity), 0);
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 86400000) return 'اليوم';
+            if (diff < 172800000) return 'أمس';
+            return date.toLocaleDateString('ar-MA');
+        }
+
+        // --- Navigation & UI Actions ---
+        function navigateTo(view, entityId = null) {
+            state.view = view;
+            state.selectedEntityId = entityId;
+            render();
+        }
+
+        function switchTab(tab) {
+            state.activeTab = tab;
+            state.searchQuery = '';
+            state.filterStatus = 'all';
+            render();
+        }
+
+        function setFilter(status) {
+            state.filterStatus = status;
+            render();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isHidden = sidebar.classList.contains('-translate-x-full');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                document.getElementById('setting-red-line').value = state.settings.redLineLimit;
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function saveSettings() {
+            const limit = document.getElementById('setting-red-line').value;
+            state.settings.redLineLimit = parseFloat(limit) || 3000;
+            state.settings.darkMode = document.getElementById('setting-dark-mode').checked;
+            
+            if (state.settings.darkMode) {
+                document.body.classList.add('dark');
+            } else {
+                document.body.classList.remove('dark');
+            }
+            
+            saveToStorage();
+            closeModal();
+            render();
+        }
+
+        function openSettings() {
+            toggleSidebar();
+            openModal('settings');
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(state);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `moul_lhanout_backup_${new Date().toISOString().split('T')[0]}.json`;
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function triggerImport() {
+            document.getElementById('import-file').click();
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    if (importedState.clients && Array.isArray(importedState.clients)) {
+                        state = importedState;
+                        saveToStorage();
+                        alert('تم استيراد البيانات بنجاح');
+                        location.reload();
+                    } else {
+                        alert('ملف غير صالح');
+                    }
+                } catch (err) {
+                    alert('خطأ في قراءة الملف');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function shareApp() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'مول الحانوت',
+                    text: 'تطبيق تتبع ديون الزبناء - مول الحانوت',
+                    url: window.location.href
+                }).catch(console.error);
+            } else {
+                alert('المشاركة غير مدعومة في هذا المتصفح. يمكنك نسخ الرابط: ' + window.location.href);
+            }
+        }
+
+        function deleteEntity(entityId) {
+            const type = state.activeTab;
+            const msg = type === 'suppliers' ? 'هل أنت متأكد من حذف هذا المورد؟' : 'هل أنت متأكد من حذف هذا الزبون؟';
+            if (confirm(msg + ' سيتم مسح جميع معاملاته نهائياً.')) {
+                if (type === 'suppliers') {
+                    state.suppliers = state.suppliers.filter(s => s.id !== entityId);
+                } else {
+                    state.clients = state.clients.filter(c => c.id !== entityId);
+                }
+                saveToStorage();
+                navigateTo('dashboard');
+            }
+        }
+
+        function openModal(type) {
+            const container = document.getElementById('modal-container');
+            container.classList.remove('hidden');
+            
+            let content = '';
+            const entityType = state.activeTab === 'suppliers' ? 'مورد' : 'زبون';
+            if (type === 'newClient') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">إضافة ${entityType} جديد</h3>
+                        <div class="space-y-4">
+                            <input type="text" id="new-entity-name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary" placeholder="الاسم">
+                            <input type="tel" id="new-entity-phone" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary" placeholder="رقم الهاتف">
+                            <div class="flex gap-3 pt-2">
+                                <button onclick="closeModal()" class="flex-1 py-3 text-gray-500 font-bold">إلغاء</button>
+                                <button onclick="addEntity()" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold">تأكيد</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'settings') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">الإعدادات</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">حد التنبيه (الخط الأحمر)</label>
+                                <input type="number" id="setting-red-line" value="${state.settings.redLineLimit}" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary">
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <span class="text-sm font-bold text-primary">الوضع الليلي</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="setting-dark-mode" ${state.settings.darkMode ? 'checked' : ''} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="exportData()" class="p-3 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold flex flex-col items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    تصدير JSON
+                                </button>
+                                <button onclick="triggerImport()" class="p-3 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold flex flex-col items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                    استيراد JSON
+                                </button>
+                            </div>
+                            <button onclick="shareApp()" class="w-full p-3 bg-secondary/10 text-secondary rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                مشاركة التطبيق
+                            </button>
+                            <div class="flex gap-3 pt-2">
+                                <button onclick="closeModal()" class="flex-1 py-3 text-gray-500 font-bold">إلغاء</button>
+                                <button onclick="saveSettings()" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold">حفظ</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'addDebt') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">إضافة دين جديد</h3>
+                        <div class="space-y-4">
+                            <input type="text" id="trans-label" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary" placeholder="بيان (مثلا: تقدية)">
+                            <input type="number" id="trans-amount" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary" placeholder="المبلغ">
+                            <div class="flex gap-3 pt-2">
+                                <button onclick="closeModal()" class="flex-1 py-3 text-gray-500 font-bold">إلغاء</button>
+                                <button onclick="addTransaction('debt')" class="flex-1 bg-tertiary text-white py-3 rounded-xl font-bold">إضافة</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'addPayment') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">تسجيل أداء</h3>
+                        <div class="space-y-4">
+                            <input type="number" id="trans-amount" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary" placeholder="المبلغ المؤدى">
+                            <div class="flex gap-3 pt-2">
+                                <button onclick="closeModal()" class="flex-1 py-3 text-gray-500 font-bold">إلغاء</button>
+                                <button onclick="addTransaction('payment')" class="flex-1 bg-secondary text-white py-3 rounded-xl font-bold">تسجيل</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = content;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-container').classList.add('hidden');
+        }
+
+        function addEntity() {
+            const name = document.getElementById('new-entity-name').value;
+            const phone = document.getElementById('new-entity-phone').value;
+            if (!name) return;
+            
+            const newEntity = {
+                id: (state.activeTab === 'suppliers' ? 's' : 'c') + Date.now().toString(),
+                name,
+                phone,
+                transactions: []
+            };
+            
+            if (state.activeTab === 'suppliers') {
+                state.suppliers.unshift(newEntity);
+            } else {
+                state.clients.unshift(newEntity);
+            }
+            saveToStorage();
+            closeModal();
+            render();
+        }
+
+        function addTransaction(type) {
+            const amount = parseFloat(document.getElementById('trans-amount').value);
+            const label = document.getElementById('trans-label')?.value || (type === 'payment' ? 'أداء' : 'دين');
+            
+            if (isNaN(amount) || amount <= 0) return;
+            
+            const list = state.activeTab === 'suppliers' ? state.suppliers : state.clients;
+            const entity = list.find(e => e.id === state.selectedEntityId);
+            if (!entity) return;
+            
+            entity.transactions.unshift({
+                id: Date.now().toString(),
+                type,
+                label,
+                amount,
+                date: new Date().toISOString()
+            });
+            
+            saveToStorage();
+            closeModal();
+            render();
+        }
+
+        function handleSearch(e) {
+            state.searchQuery = e.target.value;
+            renderEntityList();
+        }
+
+        // --- Rendering Functions ---
+        function render() {
+            const app = document.getElementById('app');
+            if (state.view === 'dashboard') {
+                renderDashboard(app);
+            } else if (state.view === 'entityDetail') {
+                renderEntityDetail(app);
+            }
+        }
+
+        function renderDashboard(container) {
+            const isSuppliers = state.activeTab === 'suppliers';
+            const entityType = isSuppliers ? 'مورد' : 'زبون';
+            const totalDebts = getTotalDebts(state.activeTab);
+
+            container.innerHTML = `
+                <!-- Top Bar -->
+                <div class="p-6 flex justify-between items-center">
+                    <h1 class="text-2xl font-black text-primary">مول الحانوت</h1>
+                    <button onclick="toggleSidebar()" class="p-2 bg-white rounded-xl shadow-sm text-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Search & Filter -->
+                <div class="px-6 mb-6 space-y-3">
+                    <div class="relative">
+                        <input type="text" oninput="handleSearch(event)" value="${state.searchQuery}" placeholder="ابحث عن ${entityType}" class="w-full p-4 pr-12 bg-white rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-secondary/20 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button onclick="setFilter('all')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'all' ? 'bg-primary text-white' : 'bg-white text-gray-400'}">الكل</button>
+                        <button onclick="setFilter('debt')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'debt' ? 'bg-tertiary text-white' : 'bg-white text-gray-400'}">عليهم ديون</button>
+                        <button onclick="setFilter('paid')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'paid' ? 'bg-secondary text-white' : 'bg-white text-gray-400'}">خالصين</button>
+                    </div>
+                </div>
+
+                <!-- Hero Card -->
+                <div class="px-6 mb-8">
+                    <div class="hero-gradient rounded-[32px] p-8 text-white shadow-xl">
+                        <p class="text-secondary font-medium mb-2 opacity-80">${isSuppliers ? 'مجموع ما علي للموردين' : 'مجموع الديون على الزبناء'}</p>
+                        <div class="flex items-baseline gap-2">
+                            <h2 class="text-4xl font-bold">${formatCurrency(totalDebts).split(' ')[0]}</h2>
+                            <span class="text-lg opacity-60">د.م</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Header -->
+                <div class="px-6 mb-4 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-primary">قائمة ${isSuppliers ? 'الموردين' : 'الزبناء'}</h3>
+                    <span class="px-3 py-1 bg-indigo-50 text-indigo-500 text-xs font-bold rounded-full">${isSuppliers ? state.suppliers.length : state.clients.length} ${entityType}</span>
+                </div>
+
+                <!-- Entity List -->
+                <div id="entity-list" class="flex-1 overflow-y-auto px-6 pb-24 no-scrollbar space-y-4">
+                    <!-- List items injected here -->
+                </div>
+
+                <!-- Floating Action Button -->
+                <button onclick="openModal('newClient')" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-2 font-bold z-30 active:scale-95 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>${entityType} جديد</span>
+                </button>
+
+                <!-- Bottom Nav -->
+                <div class="absolute bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-100 flex items-center justify-around px-6 z-20">
+                    <button onclick="switchTab('clients')" class="flex flex-col items-center gap-1 ${!isSuppliers ? 'text-secondary' : 'text-gray-300'}">
+                        <div class="p-2 ${!isSuppliers ? 'bg-secondary/10' : ''} rounded-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="${!isSuppliers ? 'currentColor' : 'none'}" viewBox="${!isSuppliers ? '0 0 20 20' : '0 0 24 24'}" stroke="${!isSuppliers ? 'none' : 'currentColor'}">
+                                ${!isSuppliers ? 
+                                    '<path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />' :
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />'
+                                }
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold">الزبناء</span>
+                    </button>
+                    <button onclick="switchTab('suppliers')" class="flex flex-col items-center gap-1 ${isSuppliers ? 'text-secondary' : 'text-gray-300'}">
+                        <div class="p-2 ${isSuppliers ? 'bg-secondary/10' : ''} rounded-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="${isSuppliers ? 'currentColor' : 'none'}" viewBox="${isSuppliers ? '0 0 20 20' : '0 0 24 24'}" stroke="${isSuppliers ? 'none' : 'currentColor'}">
+                                ${isSuppliers ?
+                                    '<path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />' :
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />'
+                                }
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold">الموردون</span>
+                    </button>
+                </div>
+            `;
+            renderEntityList();
+        }
+
+        function renderEntityList() {
+            const listContainer = document.getElementById('entity-list');
+            if (!listContainer) return;
+
+            const list = state.activeTab === 'suppliers' ? state.suppliers : state.clients;
+            
+            let filtered = list.filter(e => 
+                e.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+            );
+
+            if (state.filterStatus === 'debt') {
+                filtered = filtered.filter(e => getEntityTotal(e) > 0);
+            } else if (state.filterStatus === 'paid') {
+                filtered = filtered.filter(e => getEntityTotal(e) === 0);
+            }
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 opacity-30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <p class="font-bold">لا يوجد نتائج</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = filtered.map(entity => {
+                const total = getEntityTotal(entity);
+                const lastTrans = entity.transactions[0];
+                const statusColor = total >= state.settings.redLineLimit ? 'text-tertiary' : (total === 0 ? 'text-secondary' : 'text-primary');
+                
+                return `
+                    <div onclick="navigateTo('entityDetail', '${entity.id}')" class="bg-white p-4 rounded-2xl custom-shadow flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer">
+                        <div class="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-primary">${entity.name}</h4>
+                            <p class="text-xs text-gray-400">${lastTrans ? lastTrans.label + ' • ' + formatDate(lastTrans.date) : 'لا توجد معاملات'}</p>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold ${statusColor}">${formatCurrency(total).split(' ')[0]}</p>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-200 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderEntityDetail(container) {
+            const list = state.activeTab === 'suppliers' ? state.suppliers : state.clients;
+            const entity = list.find(e => e.id === state.selectedEntityId);
+            if (!entity) {
+                navigateTo('dashboard');
+                return;
+            }
+
+            const total = getEntityTotal(entity);
+            const statusColor = total >= state.settings.redLineLimit ? 'text-tertiary' : (total === 0 ? 'text-secondary' : 'text-primary');
+            const entityTypeLabel = state.activeTab === 'suppliers' ? 'المورد' : 'الزبون';
+
+            container.innerHTML = `
+                <!-- Header -->
+                <div class="p-6 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <button onclick="navigateTo('dashboard')" class="p-2 bg-white rounded-xl shadow-sm text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <h1 class="text-xl font-bold text-primary">تفاصيل ${entityTypeLabel}</h1>
+                    </div>
+                    <button onclick="deleteEntity('${entity.id}')" class="p-2 text-tertiary hover:bg-tertiary/10 rounded-xl transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Entity Info Card -->
+                <div class="px-6 mb-8">
+                    <div class="bg-white rounded-[32px] p-8 shadow-xl text-center">
+                        <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-400 mx-auto mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-black text-primary mb-1">${entity.name}</h2>
+                        <p class="text-gray-400 text-sm mb-4">${entity.phone || 'بدون رقم هاتف'}</p>
+                        <div class="pt-4 border-t border-gray-50">
+                            <p class="text-xs text-gray-400 mb-1">إجمالي الرصيد</p>
+                            <p class="text-3xl font-black ${statusColor}">${formatCurrency(total)}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="px-6 mb-8 flex gap-4">
+                    <button onclick="openModal('addDebt')" class="flex-1 bg-tertiary text-white py-4 rounded-2xl font-bold shadow-lg shadow-tertiary/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span>إضافة دين</span>
+                    </button>
+                    <button onclick="openModal('addPayment')" class="flex-1 bg-secondary text-white py-4 rounded-2xl font-bold shadow-lg shadow-secondary/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        <span>تسجيل أداء</span>
+                    </button>
+                </div>
+
+                <!-- Transactions Header -->
+                <div class="px-6 mb-4">
+                    <h3 class="text-lg font-bold text-primary">سجل المعاملات</h3>
+                </div>
+
+                <!-- Transactions List -->
+                <div class="flex-1 overflow-y-auto px-6 pb-8 no-scrollbar space-y-3">
+                    ${entity.transactions.length === 0 ? `
+                        <div class="text-center py-12 opacity-20">
+                            <p class="font-bold">لا توجد معاملات بعد</p>
+                        </div>
+                    ` : entity.transactions.map(t => `
+                        <div class="bg-white p-4 rounded-2xl custom-shadow flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center ${t.type === 'debt' ? 'bg-tertiary/10 text-tertiary' : 'bg-secondary/10 text-secondary'}">
+                                    ${t.type === 'debt' ? 
+                                        '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>' : 
+                                        '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>'
+                                    }
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-primary">${t.label}</p>
+                                    <p class="text-[10px] text-gray-400">${new Date(t.date).toLocaleString('ar-MA')}</p>
+                                </div>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-black ${t.type === 'debt' ? 'text-tertiary' : 'text-secondary'}">${t.type === 'debt' ? '+' : '-'}${t.amount.toFixed(2)}</p>
+                                <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${t.type === 'debt' ? 'bg-tertiary/5 text-tertiary' : 'bg-secondary/5 text-secondary'}">
+                                    ${t.type === 'debt' ? 'دين' : 'أداء'}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // --- Initialization ---
+        window.onload = () => {
+            loadFromStorage();
+            render();
+            
+            // Hide intro screen after 2.5 seconds
+            setTimeout(() => {
+                const intro = document.getElementById('intro-screen');
+                intro.style.opacity = '0';
+                intro.style.visibility = 'hidden';
+            }, 2500);
+        };
+    </script>
+</body>
+</html>
+
