@@ -123,6 +123,9 @@
             0%, 100% { transform: scale(1); opacity: 0.8; }
             50% { transform: scale(1.1); opacity: 1; }
         }
+        .customers-list, .transactions-list {
+            padding-bottom: 180px !important;
+        }
     </style>
 </head>
 <body class="flex justify-center min-h-screen">
@@ -209,6 +212,7 @@
             filterStatus: 'all', // all, debt, paid
             clients: [],
             suppliers: [],
+            pendingDeleteId: null,
             settings: {
                 redLineLimit: 3000,
                 darkMode: false
@@ -377,13 +381,13 @@
                     if (importedState.clients && Array.isArray(importedState.clients)) {
                         state = importedState;
                         saveToStorage();
-                        alert('تم استيراد البيانات بنجاح');
-                        location.reload();
+                        render();
+                        openModal('alert', 'تم استيراد البيانات بنجاح');
                     } else {
-                        alert('ملف غير صالح');
+                        openModal('alert', 'ملف غير صالح');
                     }
                 } catch (err) {
-                    alert('خطأ في قراءة الملف');
+                    openModal('alert', 'خطأ في قراءة الملف');
                 }
             };
             reader.readAsText(file);
@@ -395,27 +399,35 @@
                     title: 'مول الحانوت',
                     text: 'تطبيق تتبع ديون الزبناء - مول الحانوت',
                     url: window.location.href
-                }).catch(console.error);
+                }).catch(err => {
+                    console.error(err);
+                    openModal('alert', 'خطأ في المشاركة');
+                });
             } else {
-                alert('المشاركة غير مدعومة في هذا المتصفح. يمكنك نسخ الرابط: ' + window.location.href);
+                openModal('alert', 'المشاركة غير مدعومة في هذا المتصفح. يمكنك نسخ الرابط: ' + window.location.href);
             }
         }
 
         function deleteEntity(entityId) {
-            const type = state.activeTab;
-            const msg = type === 'suppliers' ? 'هل أنت متأكد من حذف هذا المورد؟' : 'هل أنت متأكد من حذف هذا الزبون؟';
-            if (confirm(msg + ' سيتم مسح جميع معاملاته نهائياً.')) {
-                if (type === 'suppliers') {
-                    state.suppliers = state.suppliers.filter(s => s.id !== entityId);
-                } else {
-                    state.clients = state.clients.filter(c => c.id !== entityId);
-                }
-                saveToStorage();
-                navigateTo('dashboard');
-            }
+            state.pendingDeleteId = entityId;
+            openModal('confirmDelete');
         }
 
-        function openModal(type) {
+        function performDelete() {
+            const entityId = state.pendingDeleteId;
+            const type = state.activeTab;
+            if (type === 'suppliers') {
+                state.suppliers = state.suppliers.filter(s => s.id !== entityId);
+            } else {
+                state.clients = state.clients.filter(c => c.id !== entityId);
+            }
+            saveToStorage();
+            state.pendingDeleteId = null;
+            closeModal();
+            navigateTo('dashboard');
+        }
+
+        function openModal(type, data = null) {
             const container = document.getElementById('modal-container');
             container.classList.remove('hidden');
             
@@ -497,6 +509,26 @@
                                 <button onclick="addTransaction('payment')" class="flex-1 bg-secondary text-white py-3 rounded-xl font-bold">تسجيل</button>
                             </div>
                         </div>
+                    </div>
+                `;
+            } else if (type === 'confirmDelete') {
+                const entityType = state.activeTab === 'suppliers' ? 'مورد' : 'زبون';
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">حذف ${entityType}</h3>
+                        <p class="text-sm text-gray-500 text-center mb-6">هل أنت متأكد من حذف هذا ال${entityType}؟ سيتم مسح جميع معاملاته نهائياً.</p>
+                        <div class="flex gap-3">
+                            <button onclick="closeModal()" class="flex-1 py-3 text-gray-500 font-bold">إلغاء</button>
+                            <button onclick="performDelete()" class="flex-1 bg-tertiary text-white py-3 rounded-xl font-bold">حذف نهائي</button>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'alert') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">تنبيه</h3>
+                        <p class="text-sm text-gray-500 text-center mb-6">${data}</p>
+                        <button onclick="closeModal()" class="w-full bg-primary text-white py-3 rounded-xl font-bold">حسناً</button>
                     </div>
                 `;
             }
@@ -617,7 +649,7 @@
                 </div>
 
                 <!-- Entity List -->
-                <div id="entity-list" class="flex-1 overflow-y-auto px-6 pb-24 no-scrollbar space-y-4">
+                <div id="entity-list" class="flex-1 overflow-y-auto px-6 no-scrollbar space-y-4 customers-list">
                     <!-- List items injected here -->
                 </div>
 
@@ -782,7 +814,7 @@
                 </div>
 
                 <!-- Transactions List -->
-                <div class="flex-1 overflow-y-auto px-6 pb-8 no-scrollbar space-y-3">
+                <div class="flex-1 overflow-y-auto px-6 no-scrollbar space-y-3 transactions-list">
                     ${entity.transactions.length === 0 ? `
                         <div class="text-center py-12 opacity-20">
                             <p class="font-bold">لا توجد معاملات بعد</p>
