@@ -1,0 +1,90 @@
+# Project Report: Moul Lhanout (مول الحانوت)
+
+## 1. Introduction
+**Moul Lhanout** is a specialized debt management application designed for local shopkeepers ("Moul Lhanout" in Moroccan Arabic) to track credit given to customers (clients) and credit owed to wholesalers (suppliers). The application is built with a focus on simplicity, speed, and offline reliability, making it ideal for a fast-paced retail environment. It features a modern, mobile-first interface with full support for the Arabic language and RTL (Right-to-Left) layout.
+
+---
+
+## 2. Tech Stack & Libraries
+The application follows a "Pure JavaScript" philosophy to ensure maximum compatibility and performance, especially when wrapped as a native Android application.
+
+*   **HTML5**: Provides the semantic structure of the application.
+*   **Tailwind CSS (v4)**: Used for all styling. It allows for rapid UI development using utility classes and ensures a consistent design system.
+*   **JavaScript (ES6+)**: The core logic is written in modular JavaScript, utilizing modern features like ES Modules, Arrow Functions, and Template Literals.
+*   **Vite**: A high-performance build tool that serves as the development server and handles the production build process.
+*   **LocalStorage API**: Used for data persistence. This ensures that all data is saved directly on the user's device, allowing the app to work 100% offline.
+*   **Intl API**: Used for localized currency formatting (MAD - Moroccan Dirham) and date formatting.
+
+---
+
+## 3. Application Features ("Feathers")
+
+### A. Dashboard & Overview
+*   **How it works**: Displays the total sum of debts for either clients or suppliers.
+*   **Implementation**: The `getTotalDebts` function in `utils.js` iterates through all entities and sums their balances. The UI updates dynamically when switching between the "Clients" and "Suppliers" tabs.
+
+### B. Entity Management (Clients & Suppliers)
+*   **How it works**: Users can add new clients or suppliers with a name and phone number. They can also delete entities.
+*   **Implementation**: `addEntity` in `ui.js` creates a new object with a unique ID and unshifts it into the state array. `deleteEntity` handles removals with a confirmation modal to prevent accidental data loss.
+
+### C. Transaction Tracking
+*   **How it works**: Each entity has a dedicated ledger. Users can add "Debts" (increasing the balance) or "Payments" (decreasing the balance).
+*   **Implementation**: Transactions are stored as an array within each entity object. Each transaction has a type (`debt` or `payment`), a label, an amount, and a timestamp.
+
+### D. Search, Filter, and Sort
+*   **How it works**: Users can quickly find specific people, filter those who have outstanding debts, and sort the list by balance or date.
+*   **Implementation**: The `renderEntityList` function in `ui.js` applies a chain of `.filter()` and `.sort()` methods to the state data before rendering the HTML.
+
+### E. Red Line Alert System
+*   **How it works**: A visual warning (red text) appears when a client's debt exceeds a user-defined limit.
+*   **Implementation**: The `redLineLimit` is stored in the app settings. During rendering, the app compares the entity's total debt to this limit and applies the `text-tertiary` (red) class if exceeded.
+
+### F. Data Portability (Export/Import)
+*   **How it works**: Users can download their entire database as a `.json` file for backup or move it to another device.
+*   **Implementation**: `exportData` creates a Blob from the state JSON and triggers a download. `handleImport` uses the `FileReader` API to read a selected JSON file and overwrite the current state.
+
+### G. Dark Mode
+*   **How it works**: A toggle in the settings allows users to switch between light and dark themes.
+*   **Implementation**: Tailwind's `dark` class is toggled on the `<body>` element, and the preference is saved in `localStorage`.
+
+---
+
+## 4. File Organization & Roles
+
+The project is organized into a modular structure to separate concerns and improve maintainability.
+
+### Root Directory
+*   **`index.html`**: The main entry point. It contains the base layout, including the sidebar, modal containers, and the main app mounting point (`<div id="app">`).
+*   **`package.json`**: Defines project dependencies and build scripts.
+*   **`vite.config.js`**: Configuration for the Vite build tool.
+
+### `/src/js/` (Logic Layer)
+*   **`state.js`**: 
+    *   **Role**: The "Source of Truth".
+    *   **Details**: Defines the initial application state, handles loading from and saving to `localStorage`, and provides a `setState` helper.
+*   **`ui.js`**: 
+    *   **Role**: The "Renderer and Controller".
+    *   **Details**: Contains all functions that generate HTML strings and update the DOM. It also handles user interactions like opening modals, switching views, and processing form inputs.
+*   **`utils.js`**: 
+    *   **Role**: "Helper Utilities".
+    *   **Details**: Pure functions for formatting currency, calculating totals, and formatting dates (e.g., "Today", "Yesterday").
+*   **`app.js`**: 
+    *   **Role**: "Orchestrator".
+    *   **Details**: Initializes the application, attaches event handlers to the global `window` object (so they can be called from HTML `onclick` attributes), and manages the splash screen timing.
+
+### `/src/css/` (Style Layer)
+*   **`style.css`**: 
+    *   **Role**: "Visual Identity".
+    *   **Details**: Imports Tailwind CSS and defines custom variables for the color palette (Primary: Indigo, Secondary: Teal, Tertiary: Rose). It also includes custom animations for the splash screen and transitions.
+
+---
+
+## 5. Data Flow Summary
+1.  **Load**: On startup, `app.js` calls `loadFromStorage()` from `state.js`.
+2.  **Render**: `app.js` calls `render()` from `ui.js`, which reads the current `state`.
+3.  **Action**: User clicks a button (e.g., "Add Debt").
+4.  **Update**: The handler in `ui.js` modifies the `state` object.
+5.  **Persist**: `saveToStorage()` is called to update `localStorage`.
+6.  **Refresh**: `render()` is called again to reflect the changes in the UI.
+
+This architecture ensures that the UI is always in sync with the data and that no data is lost even if the app is closed abruptly.
