@@ -132,7 +132,7 @@
     <!-- Intro Screen -->
     <div id="intro-screen">
         <div class="logo-anim mb-4">
-            <img src="https://ais-dev-3mxxe6mh6ch2ztkr4mlo4x-656027147174.europe-west2.run.app/logo.png" alt="Logo" class="w-48 h-48 object-contain">
+            <img src="logo.png" alt="Logo" class="w-48 h-48 object-contain">
         </div>
         <h1 class="text-2xl font-black text-white">مول الحانوت</h1>
         <div class="mt-8 w-12 h-1 bg-secondary rounded-full overflow-hidden">
@@ -210,6 +210,7 @@
             selectedEntityId: null,
             searchQuery: '',
             filterStatus: 'all', // all, debt, paid
+            sortBy: 'newest', // newest, oldest, highest, smallest
             clients: [],
             suppliers: [],
             pendingDeleteId: null,
@@ -224,12 +225,19 @@
         function loadFromStorage() {
             const data = localStorage.getItem(STORAGE_KEY);
             if (data) {
-                state = JSON.parse(data);
+                const loadedState = JSON.parse(data);
+                state = { ...state, ...loadedState };
                 // Reset view on load
                 state.view = 'dashboard';
                 state.selectedEntityId = null;
                 state.searchQuery = '';
                 state.filterStatus = 'all';
+                state.sortBy = 'newest';
+                
+                // Ensure arrays exist
+                if (!state.clients) state.clients = [];
+                if (!state.suppliers) state.suppliers = [];
+                if (!state.settings) state.settings = { redLineLimit: 3000, darkMode: false };
                 
                 if (state.settings.darkMode) {
                     document.body.classList.add('dark');
@@ -282,6 +290,7 @@
         }
 
         function getEntityTotal(entity) {
+            if (!entity || !entity.transactions) return 0;
             return entity.transactions.reduce((acc, t) => {
                 return t.type === 'debt' ? acc + t.amount : acc - t.amount;
             }, 0);
@@ -289,6 +298,7 @@
 
         function getTotalDebts(type) {
             const list = type === 'suppliers' ? state.suppliers : state.clients;
+            if (!list || !Array.isArray(list)) return 0;
             return list.reduce((acc, entity) => acc + getEntityTotal(entity), 0);
         }
 
@@ -321,6 +331,12 @@
             render();
         }
 
+        function setSort(sort) {
+            state.sortBy = sort;
+            closeModal();
+            render();
+        }
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -329,7 +345,6 @@
             if (isHidden) {
                 sidebar.classList.remove('-translate-x-full');
                 overlay.classList.remove('hidden');
-                document.getElementById('setting-red-line').value = state.settings.redLineLimit;
             } else {
                 sidebar.classList.add('-translate-x-full');
                 overlay.classList.add('hidden');
@@ -523,6 +538,39 @@
                         </div>
                     </div>
                 `;
+            } else if (type === 'sortMenu') {
+                content = `
+                    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+                        <h3 class="text-lg font-bold text-primary mb-4 text-center">ترتيب وحسب</h3>
+                        <div class="space-y-2">
+                            <button onclick="setSort('newest')" class="w-full p-4 rounded-xl flex items-center justify-between ${state.sortBy === 'newest' ? 'bg-secondary/10 text-secondary' : 'hover:bg-gray-50 text-primary'}">
+                                <span class="font-bold">الأحدث أولاً</span>
+                                ${state.sortBy === 'newest' ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' : ''}
+                            </button>
+                            <button onclick="setSort('oldest')" class="w-full p-4 rounded-xl flex items-center justify-between ${state.sortBy === 'oldest' ? 'bg-secondary/10 text-secondary' : 'hover:bg-gray-50 text-primary'}">
+                                <span class="font-bold">الأقدم أولاً</span>
+                                ${state.sortBy === 'oldest' ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' : ''}
+                            </button>
+                            <button onclick="setSort('highest')" class="w-full p-4 rounded-xl flex items-center justify-between ${state.sortBy === 'highest' ? 'bg-secondary/10 text-secondary' : 'hover:bg-gray-50 text-primary'}">
+                                <span class="font-bold">الأعلى ديناً</span>
+                                ${state.sortBy === 'highest' ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' : ''}
+                            </button>
+                            <button onclick="setSort('smallest')" class="w-full p-4 rounded-xl flex items-center justify-between ${state.sortBy === 'smallest' ? 'bg-secondary/10 text-secondary' : 'hover:bg-gray-50 text-primary'}">
+                                <span class="font-bold">الأقل ديناً</span>
+                                ${state.sortBy === 'smallest' ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' : ''}
+                            </button>
+                            <div class="pt-4 border-t border-gray-100 mt-2">
+                                <p class="text-[10px] text-gray-400 mb-2 px-2">تصفية حسب الحالة</p>
+                                <div class="flex gap-2">
+                                    <button onclick="setFilter('all'); closeModal()" class="flex-1 py-2 rounded-lg text-xs font-bold ${state.filterStatus === 'all' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-400'}">الكل</button>
+                                    <button onclick="setFilter('debt'); closeModal()" class="flex-1 py-2 rounded-lg text-xs font-bold ${state.filterStatus === 'debt' ? 'bg-tertiary text-white' : 'bg-gray-50 text-gray-400'}">عليهم ديون</button>
+                                    <button onclick="setFilter('paid'); closeModal()" class="flex-1 py-2 rounded-lg text-xs font-bold ${state.filterStatus === 'paid' ? 'bg-secondary text-white' : 'bg-gray-50 text-gray-400'}">خالصين</button>
+                                </div>
+                            </div>
+                            <button onclick="closeModal()" class="w-full mt-4 py-3 text-gray-500 font-bold">إغلاق</button>
+                        </div>
+                    </div>
+                `;
             } else if (type === 'alert') {
                 content = `
                     <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
@@ -617,17 +665,19 @@
                 </div>
 
                 <!-- Search & Filter -->
-                <div class="px-6 mb-6 space-y-3">
-                    <div class="relative">
-                        <input type="text" oninput="handleSearch(event)" value="${state.searchQuery}" placeholder="ابحث عن ${entityType}" class="w-full p-4 pr-12 bg-white rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-secondary/20 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                        <button onclick="setFilter('all')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'all' ? 'bg-primary text-white' : 'bg-white text-gray-400'}">الكل</button>
-                        <button onclick="setFilter('debt')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'debt' ? 'bg-tertiary text-white' : 'bg-white text-gray-400'}">عليهم ديون</button>
-                        <button onclick="setFilter('paid')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${state.filterStatus === 'paid' ? 'bg-secondary text-white' : 'bg-white text-gray-400'}">خالصين</button>
+                <div class="px-6 mb-6">
+                    <div class="flex gap-3 items-center">
+                        <button onclick="openModal('sortMenu')" class="p-4 bg-white rounded-2xl shadow-sm text-primary active:scale-95 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                            </svg>
+                        </button>
+                        <div class="relative flex-1">
+                            <input type="text" oninput="handleSearch(event)" value="${state.searchQuery}" placeholder="ابحث عن ${entityType}" class="w-full p-4 pr-12 bg-white rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-secondary/20 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
@@ -705,6 +755,20 @@
             } else if (state.filterStatus === 'paid') {
                 filtered = filtered.filter(e => getEntityTotal(e) === 0);
             }
+
+            // Sorting
+            filtered.sort((a, b) => {
+                const totalA = getEntityTotal(a);
+                const totalB = getEntityTotal(b);
+                const dateA = a.transactions[0] ? new Date(a.transactions[0].date).getTime() : 0;
+                const dateB = b.transactions[0] ? new Date(b.transactions[0].date).getTime() : 0;
+
+                if (state.sortBy === 'newest') return dateB - dateA;
+                if (state.sortBy === 'oldest') return dateA - dateB;
+                if (state.sortBy === 'highest') return totalB - totalA;
+                if (state.sortBy === 'smallest') return totalA - totalB;
+                return 0;
+            });
 
             if (filtered.length === 0) {
                 listContainer.innerHTML = `
